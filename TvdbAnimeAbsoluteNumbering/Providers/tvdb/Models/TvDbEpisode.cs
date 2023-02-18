@@ -15,6 +15,7 @@ namespace TvdbAnimeAbsoluteNumbering.Providers.tvdb.Models
         public string image { get; set; }
         public int imageType { get; set; }
         public bool isMovie { get; set; }
+        public int absolute_number { get; set; }
         public int number { get; set; }
         public int seasonNumber { get; set; }
         public string lastUpdated { get; set; }

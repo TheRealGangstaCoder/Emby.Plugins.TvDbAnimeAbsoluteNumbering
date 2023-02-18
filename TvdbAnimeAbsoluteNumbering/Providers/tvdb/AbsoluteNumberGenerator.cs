@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using MediaBrowser.Model.Serialization;
 using TvdbAnimeAbsoluteNumbering.Providers.tvdb.Models;
@@ -25,8 +24,10 @@ namespace TvdbAnimeAbsoluteNumbering.Providers.tvdb
                     i++; // skip 590, as it is a special episode
                 }
 
-                var file = Path.Combine(seriesDataDirectory, string.Format("episode-{0}-{1}.txt", episode.seasonNumber, episode.number, i));
-                File.WriteAllText(file, $"{i}|{episode.name}");
+                episode.absolute_number = i;
+
+                var file = Path.Combine(seriesDataDirectory, string.Format("episode-{0}-{1}.json", episode.seasonNumber, episode.number));
+                jsonSerializer.SerializeToFile(episode, file);
 
             }
         }

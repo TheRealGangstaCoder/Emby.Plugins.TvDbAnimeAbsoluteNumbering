@@ -11,6 +11,7 @@ using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Providers;
 using MediaBrowser.Model.Serialization;
 using TvdbAnimeAbsoluteNumbering.Providers.tvdb;
+using TvdbAnimeAbsoluteNumbering.Providers.tvdb.Models;
 
 namespace TvdbAnimeAbsoluteNumbering.Providers.AniDB.Metadata
 {
@@ -35,12 +36,10 @@ namespace TvdbAnimeAbsoluteNumbering.Providers.AniDB.Metadata
             var seriesId = info.SeriesProviderIds["Tvdb"];
             var seriesDataDirectory = Path.Combine(_appPaths.CachePath, "tvdb", seriesId);
 
-            string searchPattern = $"episode-{info.ParentIndexNumber}-{info.IndexNumber}.txt";
+            string searchPattern = $"episode-{info.ParentIndexNumber}-{info.IndexNumber}.json";
 
             var episodeFilePath = Directory.GetFiles(seriesDataDirectory, searchPattern).FirstOrDefault();
             var episodeFile = new FileInfo(episodeFilePath);
-            var episodeName = string.Empty;
-            string absoluteNumber = string.Empty;
 
             if (!episodeFile.Exists)
             {
@@ -49,21 +48,14 @@ namespace TvdbAnimeAbsoluteNumbering.Providers.AniDB.Metadata
                 episodeFile = new FileInfo(episodeFilePath);
             }
 
-            if (episodeFile.Exists)
-            {
-                var contents = File.ReadAllText(episodeFile.FullName);
-                absoluteNumber = contents.Split('|')[0];
-                episodeName = contents.Split('|')[1];
-            }
-
             var result = new MetadataResult<Episode>();
 
-
-            if (!string.IsNullOrEmpty(absoluteNumber))
+            if (episodeFile.Exists)
             {
+                var episode = _jsonSerializer.DeserializeFromFile<TvdbEpisode>(episodeFile.FullName);
                 result.Item = new Episode
                 {
-                    Name = absoluteNumber + " - " + episodeName,
+                    Name = episode.absolute_number.ToString().PadLeft(3, '0') + " - " + episode.name,
                     IndexNumber = info.IndexNumber,
                     ParentIndexNumber = info.ParentIndexNumber
                 };
