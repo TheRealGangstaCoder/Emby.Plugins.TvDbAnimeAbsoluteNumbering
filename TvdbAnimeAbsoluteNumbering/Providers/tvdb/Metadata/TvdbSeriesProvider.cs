@@ -7,6 +7,7 @@ using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Providers;
 using MediaBrowser.Model.Serialization;
 using TvdbAnimeAbsoluteNumbering.Providers.tvdb;
@@ -17,11 +18,13 @@ namespace TvdbAnimeAbsoluteNumbering.Providers.AniDB.Metadata
     {
         private readonly IApplicationPaths _appPaths;
         private readonly IJsonSerializer _jsonSerializer;
+        private readonly ILogger _logger;
 
-        public TvdbSeriesProvider(IApplicationPaths appPaths, IJsonSerializer jsonSerializer)
+        public TvdbSeriesProvider(IApplicationPaths appPaths, IJsonSerializer jsonSerializer, ILogger logger)
         {
             _appPaths = appPaths;
             _jsonSerializer = jsonSerializer;
+            _logger = logger;
 
             Current = this;
         }
@@ -33,9 +36,20 @@ namespace TvdbAnimeAbsoluteNumbering.Providers.AniDB.Metadata
 
         public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo info, CancellationToken cancellationToken)
         {
-            var seriesId = info.GetProviderId("Tvdb");
-            AbsoluteNumberGenerator.GenerateAbsoluteEpisodeNumbers(seriesId, _appPaths.CachePath, _jsonSerializer);
-            return null;
+            var result = new MetadataResult<Series>()
+            {
+                HasMetadata = false
+            };
+            try
+            {
+                var seriesId = info.GetProviderId("Tvdb");
+                AbsoluteNumberGenerator.GenerateAbsoluteEpisodeNumbers(seriesId, _appPaths.CachePath, _jsonSerializer);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogSeverity.Error, ex.Message, ex);
+            }
+            return result;
         }
 
         public Task<HttpResponseInfo> GetImageResponse(string url, CancellationToken cancellationToken)
@@ -43,9 +57,27 @@ namespace TvdbAnimeAbsoluteNumbering.Providers.AniDB.Metadata
             throw new NotImplementedException(); // the tvdb plugin will do the heavy lifting
         }
 
-        public Task<IEnumerable<RemoteSearchResult>> GetSearchResults(SeriesInfo searchInfo, CancellationToken cancellationToken)
+        public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(SeriesInfo searchInfo, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException(); // the tvdb plugin will do the heavy lifting
+            var metadata = await GetMetadata(searchInfo, cancellationToken).ConfigureAwait(false);
+
+            var list = new List<RemoteSearchResult>();
+
+            if (metadata.HasMetadata)
+            {
+                var res = new RemoteSearchResult
+                {
+                    Name = metadata.Item.Name,
+                    PremiereDate = metadata.Item.PremiereDate,
+                    ProductionYear = metadata.Item.ProductionYear,
+                    ProviderIds = metadata.Item.ProviderIds,
+                    SearchProviderName = Name
+                };
+
+                list.Add(res);
+            }
+
+            return list;
         }
     }
 }
